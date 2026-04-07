@@ -1,10 +1,10 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import { supabase } from './lib/supabase';
-import Login from './pages/LoginSupabase';  // ✅ exact filename
-import Dashboard from './pages/Dashboard';  // ✅ exact filename
-import Admin from './pages/Admin';          // ✅ exact filename
-import Landing from './pages/Landing';      // ✅ exact filename
+import Login from './pages/LoginSupabase';
+import Dashboard from './pages/Dashboard';
+import Admin from './pages/Admin';
+import Landing from './pages/Landing';
 
 const ADMIN_EMAIL = "monsanto.bryann@gmail.com";
 
@@ -27,7 +27,7 @@ function App() {
     return (
       <div className="min-h-screen bg-black flex items-center justify-center">
         <div className="text-5xl animate-bounce">🍱</div>
-        <p className="text-white/50">Loading...</p>
+        <p className="text-white/50 ml-2">Loading...</p>
       </div>
     );
   }
@@ -41,6 +41,8 @@ function App() {
         <Route path="/login" element={<Login />} />
         <Route path="/dashboard" element={user ? <Dashboard /> : <Navigate to="/login" />} />
         <Route path="/admin" element={user?.email === ADMIN_EMAIL ? <Admin /> : <Navigate to="/login" />} />
+        {/* Catch-all redirect to landing */}
+        <Route path="*" element={<Navigate to="/" />} />
       </Routes>
     </BrowserRouter>
   );
