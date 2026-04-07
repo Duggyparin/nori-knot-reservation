@@ -10,43 +10,51 @@ export default function LoginSupabase() {
   const [error, setError] = useState("");
 
   useEffect(() => {
-    // Check for existing session
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    // Handle the OAuth redirect on page load
+    const handleAuthRedirect = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
       if (session?.user) {
-        redirectUser(session.user.email);
+        if (session.user.email === ADMIN_EMAIL) {
+          navigate("/admin");
+        } else {
+          navigate("/dashboard");
+        }
       }
-    });
+    };
+    
+    handleAuthRedirect();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       if (session?.user) {
-        redirectUser(session.user.email);
+        if (session.user.email === ADMIN_EMAIL) {
+          navigate("/admin");
+        } else {
+          navigate("/dashboard");
+        }
       }
     });
+    
     return () => subscription.unsubscribe();
-  }, []);
-
-  const redirectUser = (email) => {
-    if (email === ADMIN_EMAIL) {
-      navigate("/admin", { replace: true });
-    } else {
-      navigate("/dashboard", { replace: true });
-    }
-  };
+  }, [navigate]);
 
   const handleGoogleLogin = async () => {
     setLoading(true);
     setError("");
     
     try {
-      // Force full‑page redirect – no pop‑up, no `skipBrowserRedirect`
+      // For Safari, use full redirect without popup
       const { error } = await supabase.auth.signInWithOAuth({
         provider: "google",
         options: {
           redirectTo: `${window.location.origin}/dashboard`,
+          skipBrowserRedirect: false, // Important for Safari
+          queryParams: {
+            access_type: "offline",
+            prompt: "select_account", // Forces account selection
+          },
         },
       });
       if (error) throw error;
-      // The page will redirect to Google; no need to set loading false
     } catch (err) {
       console.error(err);
       setError(err.message);
@@ -60,13 +68,17 @@ export default function LoginSupabase() {
         <img src="/musubi.png" alt="Spam Musubi" className="w-full h-full object-cover opacity-40" />
         <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/40 to-[#0a0a0a]" />
       </div>
+
       <div className="relative z-10 bg-black/40 backdrop-blur-md border border-white/10 rounded-2xl p-8 w-full max-w-md shadow-2xl text-center">
         <div className="mb-8">
           <div className="text-6xl mb-4">🍱</div>
-          <h1 className="text-3xl font-black text-white">Nori-Knot</h1>
+          <h1 className="text-3xl font-black text-white">Nori‑+
+            Knot</h1>
           <p className="text-white/50 mt-2 text-sm">Sign in to reserve your Spam Musubi</p>
         </div>
+
         {error && <div className="text-red-400 text-sm text-center animate-pulse mb-4">{error}</div>}
+
         <button
           onClick={handleGoogleLogin}
           disabled={loading}
@@ -80,7 +92,10 @@ export default function LoginSupabase() {
           </svg>
           {loading ? "Redirecting..." : "Sign in with Google"}
         </button>
-        <p className="text-white/30 text-xs text-center mt-6">By continuing, you agree to our Terms of Service</p>
+
+        <p className="text-white/30 text-xs text-center mt-6">
+          By continuing, you agree to our Terms of Service
+        </p>
       </div>
     </div>
   );
