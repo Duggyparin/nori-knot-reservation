@@ -6,8 +6,10 @@ const ADMIN_EMAIL = "monsanto.bryann@gmail.com";
 
 export default function LoginSupabase() {
   const navigate = useNavigate();
+  const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [message, setMessage] = useState("");
 
   useEffect(() => {
     // Check for existing session
@@ -19,7 +21,7 @@ export default function LoginSupabase() {
     };
     checkSession();
 
-    // Listen for auth changes (important after redirect)
+    // Listen for auth changes (important after magic link click)
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       if (session?.user) {
         redirectUser(session.user.email);
@@ -36,11 +38,39 @@ export default function LoginSupabase() {
     }
   };
 
+  // Magic Link login
+  const handleMagicLink = async (e) => {
+    e.preventDefault();
+    if (!email) {
+      setError("Please enter your email address.");
+      return;
+    }
+    setLoading(true);
+    setError("");
+    setMessage("");
+    try {
+      const { error } = await supabase.auth.signInWithOtp({
+        email: email,
+        options: {
+          emailRedirectTo: `${window.location.origin}/dashboard`,
+        },
+      });
+      if (error) throw error;
+      setMessage(`✨ Magic link sent to ${email}! Check your inbox (and spam folder).`);
+      setEmail(""); // clear email field after success
+    } catch (err) {
+      console.error(err);
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Google login (redirect)
   const handleGoogleLogin = async () => {
     setLoading(true);
     setError("");
     try {
-      // Force a full‑page redirect – no popup, no extra options that might confuse Safari
       const { error } = await supabase.auth.signInWithOAuth({
         provider: "google",
         options: {
@@ -48,7 +78,6 @@ export default function LoginSupabase() {
         },
       });
       if (error) throw error;
-      // After this, the page will leave – no need to set loading false
     } catch (err) {
       console.error(err);
       setError(err.message);
@@ -62,13 +91,45 @@ export default function LoginSupabase() {
         <img src="/musubi.png" alt="Spam Musubi" className="w-full h-full object-cover opacity-40" />
         <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/40 to-[#0a0a0a]" />
       </div>
-      <div className="relative z-10 bg-black/40 backdrop-blur-md border border-white/10 rounded-2xl p-8 w-full max-w-md shadow-2xl text-center">
-        <div className="mb-8">
+      <div className="relative z-10 bg-black/40 backdrop-blur-md border border-white/10 rounded-2xl p-8 w-full max-w-md shadow-2xl">
+        <div className="text-center mb-8">
           <div className="text-6xl mb-4">🍱</div>
           <h1 className="text-3xl font-black text-white">Nori-Knot</h1>
           <p className="text-white/50 mt-2 text-sm">Sign in to reserve your Spam Musubi</p>
         </div>
+
         {error && <div className="text-red-400 text-sm text-center animate-pulse mb-4">{error}</div>}
+        {message && <div className="text-green-400 text-sm text-center mb-4">{message}</div>}
+
+        {/* Magic Link Form */}
+        <form onSubmit={handleMagicLink} className="space-y-4">
+          <input
+            type="email"
+            placeholder="Your email address"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            className="w-full px-4 py-3 rounded-xl bg-white/10 border border-white/20 focus:ring-2 focus:ring-amber-400 focus:border-transparent outline-none text-white"
+            required
+          />
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full bg-amber-400 hover:bg-amber-300 text-black font-bold py-3 rounded-xl transition-all duration-200 hover:scale-105 active:scale-95 disabled:opacity-50 disabled:scale-100 flex items-center justify-center gap-2"
+          >
+            {loading ? "Sending..." : "📧 Send Magic Link"}
+          </button>
+        </form>
+
+        <div className="relative my-6">
+          <div className="absolute inset-0 flex items-center">
+            <div className="w-full border-t border-white/20"></div>
+          </div>
+          <div className="relative flex justify-center text-xs">
+            <span className="bg-black/40 px-2 text-white/50">OR</span>
+          </div>
+        </div>
+
+        {/* Google Sign-In Button */}
         <button
           onClick={handleGoogleLogin}
           disabled={loading}
@@ -80,9 +141,12 @@ export default function LoginSupabase() {
             <path fill="currentColor" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
             <path fill="currentColor" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
           </svg>
-          {loading ? "Redirecting..." : "Sign in with Google"}
+          Sign in with Google
         </button>
-        <p className="text-white/30 text-xs text-center mt-6">By continuing, you agree to our Terms of Service</p>
+
+        <p className="text-white/30 text-xs text-center mt-6">
+          By continuing, you agree to our Terms of Service
+        </p>
       </div>
     </div>
   );
